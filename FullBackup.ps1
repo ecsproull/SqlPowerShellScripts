@@ -26,3 +26,10 @@ robocopy `
     "C:\LocalSqlBackup\Accounting_live\Full" `
     "\\wc_server\LocalSqlBackup\Accounting_live\Full" `
     *.bak /XO /R:3 /W:5
+
+
+# Copy to treasurer_pc
+robocopy `
+    "C:\LocalSqlBackup\Accounting_live\Full" `
+    "\\TREASURERS_PC\LocalSqlBackup\Accounting_live\Full" `
+    *.bak /XO /R:3 /W:5

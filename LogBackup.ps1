@@ -26,3 +26,9 @@ robocopy `
     "C:\LocalSqlBackup\Accounting_live\Logs" `
     "\\wc_server\LocalSqlBackup\Accounting_live\Logs" `
     *.trn /XO /R:3 /W:5
+
+# Copy to treasurer_pc
+robocopy `
+    "C:\LocalSqlBackup\Accounting_live\Logs" `
+    "\\TREASURERS_PC\LocalSqlBackup\Accounting_live\Logs" `
+    *.trn /XO /R:3 /W:5
