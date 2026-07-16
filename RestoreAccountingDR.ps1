@@ -1,3 +1,8 @@
+# RestoreTime format is yyyy-MM-ddTHH:mm:ss
+param(
+    [datetime]$RestoreTime
+)
+
 $server = ".\SQLEXPRESS"
 
 $fullFolder = "\\wc_server\LocalSqlBackup\Accounting_live\Full"
@@ -26,11 +31,34 @@ Invoke-Sqlcmd -ServerInstance $server -Query $sql
 
 
 #
-# Find newest full backup
+# Find FULL backup
+# - If -RestoreTime is provided, use latest FULL at or before that time.
+# - If omitted, use newest FULL.
 #
-$full = Get-ChildItem $fullFolder *.bak |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 1
+$fullBackups = Get-ChildItem $fullFolder *.bak | Sort-Object LastWriteTime
+
+if (-not $fullBackups)
+{
+    throw "No full backup files found in $fullFolder."
+}
+
+if ($PSBoundParameters.ContainsKey('RestoreTime'))
+{
+    $full = $fullBackups |
+            Where-Object { $_.LastWriteTime -le $RestoreTime } |
+            Select-Object -Last 1
+
+    if (-not $full)
+    {
+        throw "No full backup found at or before $RestoreTime."
+    }
+
+    Write-Host "Target restore time: $($RestoreTime.ToString('yyyy-MM-dd HH:mm:ss'))"
+}
+else
+{
+    $full = $fullBackups | Select-Object -Last 1
+}
 
 Write-Host "FULL: $($full.Name)"
 
@@ -56,11 +84,32 @@ Invoke-Sqlcmd -ServerInstance $server -Query $sql
 
 
 #
-# Get all logs after the FULL backup
+# Get LOG backups after the FULL backup.
+# For point-in-time restore, include logs up to the first log whose write time
+# is at/after the target time, then STOPAT on that final log.
 #
-$logs = Get-ChildItem $logFolder *.trn |
-        Where-Object { $_.LastWriteTime -gt $full.LastWriteTime } |
-        Sort-Object LastWriteTime
+$allLogs = Get-ChildItem $logFolder *.trn |
+           Where-Object { $_.LastWriteTime -gt $full.LastWriteTime } |
+           Sort-Object LastWriteTime
+
+if ($PSBoundParameters.ContainsKey('RestoreTime'))
+{
+    $cutoffLog = $allLogs |
+                 Where-Object { $_.LastWriteTime -ge $RestoreTime } |
+                 Select-Object -First 1
+
+    if (-not $cutoffLog)
+    {
+        throw "No log backup found that reaches restore time $RestoreTime."
+    }
+
+    $logs = $allLogs |
+            Where-Object { $_.LastWriteTime -le $cutoffLog.LastWriteTime }
+}
+else
+{
+    $logs = $allLogs
+}
 
 
 if ($logs.Count -eq 0)
@@ -95,10 +144,18 @@ $last = $logs[-1]
 
 Write-Host "FINAL LOG RECOVERY: $($last.Name)"
 
+$stopAtClause = ""
+
+if ($PSBoundParameters.ContainsKey('RestoreTime'))
+{
+    $stopAtSql = $RestoreTime.ToString("yyyy-MM-ddTHH:mm:ss")
+    $stopAtClause = ", STOPAT = '$stopAtSql'"
+}
+
 $sql = @"
 RESTORE LOG [$db]
 FROM DISK = '$($last.FullName)'
-WITH RECOVERY;
+WITH RECOVERY$stopAtClause;
 "@
 
 Invoke-Sqlcmd -ServerInstance $server -Query $sql
