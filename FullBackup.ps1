@@ -33,3 +33,37 @@ robocopy `
     "C:\LocalSqlBackup\Accounting_live\Full" `
     "\\TREASURERS_PC\LocalSqlBackup\Accounting_live\Full" `
     *.bak /XO /R:3 /W:5
+
+$localPath = "C:\LocalSqlBackup\WoodClub\Full"
+$localFile = "$localPath\WoodClub_FULL_$timestamp.bak"
+
+# Make sure local folder exists
+New-Item -ItemType Directory -Path $localPath -Force | Out-Null
+
+$sql = @"
+BACKUP DATABASE WoodClub
+TO DISK = '$localFile'
+WITH CHECKSUM;
+"@
+
+Invoke-Sqlcmd -ServerInstance ".\SQLEXPRESS" `
+              -Query $sql
+
+# Copy to machine B
+robocopy `
+    "C:\LocalSqlBackup\WoodClub\Full" `
+    "D:\LocalSqlBackup\WoodClub\Full" `
+    *.bak /XO /R:3 /W:5
+
+# Copy to wc_server
+robocopy `
+    "C:\LocalSqlBackup\WoodClub\Full" `
+    "\\wc_server\LocalSqlBackup\WoodClub\Full" `
+    *.bak /XO /R:3 /W:5
+
+
+# Copy to treasurer_pc
+robocopy `
+    "C:\LocalSqlBackup\WoodClub\Full" `
+    "\\TREASURERS_PC\LocalSqlBackup\WoodClub\Full" `
+    *.bak /XO /R:3 /W:5
