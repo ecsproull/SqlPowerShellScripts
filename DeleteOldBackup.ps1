@@ -68,6 +68,8 @@ if (-not $normalizedDrives) {
 $folders = foreach ($drive in $normalizedDrives) {
     "${drive}:\LocalSqlBackup\Accounting_live\Full"
     "${drive}:\LocalSqlBackup\Accounting_live\Logs"
+     "${drive}:\LocalSqlBackup\WoodClub\Full"
+    "${drive}:\LocalSqlBackup\WoodClub\Logs"
 }
 
 $cutoff = (Get-Date).AddDays(-$DaysToKeep)
