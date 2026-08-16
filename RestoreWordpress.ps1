@@ -18,9 +18,9 @@ Write-Host "Using backup file: $($latestBackup.FullName)"
 # Create a modified temp copy
 $tempSql = Join-Path $env:TEMP "woodtest-import.sql"
 
-(Get-Content $latestBackup.FullName -Raw) `
-    -replace 'i2509778_wp1', 'wordpress' |
-    Set-Content $tempSql -Encoding UTF8
+$content = [System.IO.File]::ReadAllText($latestBackup.FullName, [System.Text.Encoding]::UTF8)
+$content = $content -replace 'i2509778_wp1', 'wordpress'
+[System.IO.File]::WriteAllText($tempSql, $content, [System.Text.UTF8Encoding]::new($false))
 
 Write-Host "Importing modified SQL file..."
 
@@ -29,6 +29,7 @@ Write-Host "Importing modified SQL file..."
     --host=127.0.0.1 `
     --user=$dbUser `
     --password=$dbPass `
+    --default-character-set=utf8mb4 `
     wordpress `
     --execute="source $tempSql"
 
@@ -37,7 +38,3 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Database import completed."
-
-ssh scw-wc-linux@192.168.8.105 "cd /var/www/wordpress/wp-content/plugins/SignUps/scripts && ./keyimport.sh woodtest"
-
-Write-Host "DB updated from Wordpress"
